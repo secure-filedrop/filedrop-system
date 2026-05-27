@@ -17,14 +17,14 @@ The documentation inside the docs/ folder is the source of truth for the project
 
 Important files:
 
-docs/architecture.md
-docs/api-endpoints.md
-docs/database-schema.md
-docs/mvp-roadmap.md
-docs/security-notes.md
-docs/user-flow.md
-docs/ai-usage-rules.md
-docs/collaboration-guide.md
+- docs/architecture.md
+- docs/api-endpoints.md
+- docs/database-schema.md
+- docs/mvp-roadmap.md
+- docs/security-notes.md
+- docs/user-flow.md
+- docs/ai-usage-rules.md
+- docs/collaboration-guide.md
 
 If code and documentation disagree, the team should discuss and update the correct source.
 
@@ -36,13 +36,14 @@ For normal development, use branches and pull requests.
 
 Recommended branch examples:
 
-feature/auth-login
-feature/file-upload
-feature/file-download
-feature/audit-logs
-feature/dashboard-ui
-docs/update-roadmap
-fix/upload-validation
+- feature/auth-login
+- feature/file-upload
+- feature/file-download
+- feature/audit-logs
+- feature/dashboard-ui
+- docs/update-roadmap
+- fix/upload-validation
+
 Normal Task Workflow
 1. Discuss the feature or fix.
 2. Create a GitHub issue.
@@ -98,49 +99,51 @@ File Ownership by Area
 
 Authentication work usually belongs in:
 
-backend/app/api/routes_auth.py
-backend/app/auth/security.py
-backend/app/auth/dependencies.py
-backend/app/templates/login.html
+- backend/app/api/routes_auth.py
+- backend/app/auth/security.py
+- backend/app/auth/dependencies.py
+- backend/app/templates/login.html
 
 File upload/download work usually belongs in:
 
-backend/app/api/routes_files.py
-backend/app/services/file_service.py
-backend/app/storage/local_storage.py
-backend/uploaded_files/
+- backend/app/api/routes_files.py
+- backend/app/services/file_service.py
+- backend/app/storage/local_storage.py
+- backend/uploaded_files/
 
 Admin and audit work usually belongs in:
 
-backend/app/api/routes_admin.py
-backend/app/services/audit_service.py
-backend/app/templates/admin_logs.html
+- backend/app/api/routes_admin.py
+- backend/app/services/audit_service.py
+- backend/app/templates/admin_logs.html
 
 Database work usually belongs in:
 
-backend/app/database/
-backend/app/models/
-backend/app/schemas/
-backend/app/database/migrations/
+- backend/app/database/
+- backend/app/models/
+- backend/app/schemas/
+- backend/app/database/migrations/
 
 Frontend/template work usually belongs in:
 
-backend/app/templates/
-backend/app/static/
-Avoiding Duplicate AI Work
+- backend/app/templates/
+- backend/app/static/
+- Avoiding Duplicate AI Work
 
 When multiple people use AI, the project can drift if each AI assistant invents different names or patterns.
 
 To avoid that:
 
-Use the documented route names.
-Use the documented table names.
-Use the documented field names.
-Keep business logic in services.
-Keep route files focused on request/response handling.
-Ask before changing architecture.
-Keep pull requests small.
+- Use the documented route names.
+- Use the documented table names.
+- Use the documented field names.
+- Keep business logic in services.
+- Keep route files focused on request/response handling.
+- Ask before changing architecture.
+- Keep pull requests small.
+
 Good Task Example
+
 Task:
 Create local storage helper for uploaded files.
 
@@ -161,18 +164,19 @@ Acceptance criteria:
 - Uploaded files are saved with safe unique names.
 - Original filenames are not trusted as storage paths.
 - The storage folder is created if missing.
+
 Project Lead / Integrator Role
 
 The project should have at least one person responsible for integration.
 
 That person checks:
 
-Does the change match the MVP?
-Does the code fit the architecture?
-Does it break other contributors' work?
-Are docs updated when needed?
-Are security rules followed?
-Main Branch Rule
+- Does the change match the MVP?
+- Does the code fit the architecture?
+- Does it break other contributors' work?
+- Are docs updated when needed?
+- Are security rules followed?
+- Main Branch Rule
 
 The main branch should represent stable project progress.
 

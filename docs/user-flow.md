@@ -1,96 +1,67 @@
-﻿
-User Flow
+﻿# User Flow
 
-This document describes the planned MVP user workflow.
+This document describes the planned MVP user workflow for the Secure File Drop System.
 
-MVP Workflow
-User opens web app
-   |
-   v
-Frontend sends login request to FastAPI
-   |
-   v
-FastAPI validates username/password
-   |
-   v
-FastAPI creates session/JWT token
-   |
-   v
-User enters dashboard
-   |
-   v
-Dashboard requests allowed files from FastAPI
-   |
-   v
-FastAPI validates token/session
-   |
-   v
-FastAPI queries PostgreSQL for permissions
-   |
-   v
-Allowed files displayed
-   |
-   v
-User uploads file
-   |
-   v
-FastAPI validates token/session again
-   |
-   v
-FastAPI validates upload rules
-   |
-   v
-File stored in local storage for MVP
-   |
-   v
-File metadata saved in PostgreSQL
-   |
-   v
-Permissions saved
-   |
-   v
-Audit log records upload
-   |
-   v
-User downloads file
-   |
-   v
-FastAPI validates permissions again
-   |
-   v
-File served/download generated
-   |
-   v
-Audit log records download
-Login Flow
-Open login page
-Submit credentials
-FastAPI validates credentials
-If valid: enter dashboard
-If invalid: show login error
-Upload Flow
-User selects file
-User submits upload form
-FastAPI validates user
-FastAPI validates file
-File service saves file metadata
-Storage service saves physical file
-Audit service logs upload
-Dashboard updates file list
-Download Flow
-User clicks download
-FastAPI validates user
-FastAPI checks file permission
-FastAPI retrieves file from storage
-Audit service logs download
-User receives file
-Admin Log Flow
-Admin logs in
-Admin opens audit logs page
-FastAPI validates admin role
-Audit service retrieves logs
-Admin reviews system activity
-User Flow Rule
+## MVP Workflow
+
+1. User opens the web app.
+2. Frontend sends login request to FastAPI.
+3. FastAPI validates the username/password.
+4. FastAPI creates a session or JWT token.
+5. User enters the dashboard.
+6. Dashboard requests allowed files from FastAPI.
+7. FastAPI validates the token/session.
+8. FastAPI queries PostgreSQL for file permissions.
+9. Allowed files are displayed.
+10. User uploads a file.
+11. FastAPI validates the token/session again.
+12. FastAPI validates upload rules.
+13. File is stored in local storage for the MVP.
+14. File metadata is saved in PostgreSQL.
+15. File permissions are saved.
+16. Audit log records the upload.
+17. User downloads a file.
+18. FastAPI validates permissions again.
+19. File is served or a download is generated.
+20. Audit log records the download.
+
+## Login Flow
+
+1. User opens the login page.
+2. User submits credentials.
+3. FastAPI validates credentials.
+4. If valid, the user enters the dashboard.
+5. If invalid, the system shows a login error.
+
+## Upload Flow
+
+1. User selects a file.
+2. User submits the upload form.
+3. FastAPI validates the current user.
+4. FastAPI validates the uploaded file.
+5. File service prepares and saves file metadata.
+6. Storage service saves the physical file.
+7. Audit service logs the upload event.
+8. Dashboard updates the file list.
+
+## Download Flow
+
+1. User clicks download.
+2. FastAPI validates the current user.
+3. FastAPI checks file permissions.
+4. FastAPI retrieves the file from storage.
+5. Audit service logs the download event.
+6. User receives the file.
+
+## Admin Log Flow
+
+1. Admin logs in.
+2. Admin opens the audit logs page.
+3. FastAPI validates the admin role.
+4. Audit service retrieves logs.
+5. Admin reviews system activity.
+
+## User Flow Rule
 
 The frontend should never be trusted as the security boundary.
 

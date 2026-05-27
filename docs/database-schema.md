@@ -9,12 +9,12 @@ users
 
 Stores application users.
 
-id
-email
-password_hash
-role
-is_active
-created_at
+- id
+- email
+- password_hash
+- role
+- is_active
+- created_at
 
 Notes:
 
@@ -37,78 +37,78 @@ team_members
 
 Connects users to teams.
 
-id
-user_id
-team_id
+- id
+- user_id
+- team_id
 
 MVP status:
 
-Future feature.
-Used later for team file permissions.
-files
+- Future feature.
+- Used later for team file permissions.
+- files
 
 Stores metadata about uploaded files.
 
-id
-owner_user_id
-original_filename
-stored_filename
-storage_key
-storage_type
-file_size
-content_type
-expires_at
-is_deleted
-created_at
+- id
+- owner_user_id
+- original_filename
+- stored_filename
+- storage_key
+- storage_type
+- file_size
+- content_type
+- expires_at
+- is_deleted
+- created_at
 
 Notes:
 
-original_filename is the user-facing file name.
-stored_filename is the safe unique filename used on disk.
-storage_key identifies where the file is stored.
-storage_type can be local for MVP and s3 later.
-expires_at supports future time/date-gated files.
-is_deleted allows soft deletion.
-file_permissions
+- original_filename is the user-facing file name.
+- stored_filename is the safe unique filename used on disk.
+- storage_key identifies where the file is stored.
+- storage_type can be local for MVP and s3 later.
+- expires_at supports future time/date-gated files.
+- is_deleted allows soft deletion.
+- file_permissions
 
 Stores file access rules.
 
-id
-file_id
-user_id nullable
-team_id nullable
-permission_type
-created_at
+- id
+- file_id
+- user_id nullable
+- team_id nullable
+- permission_type
+- created_at
 
 Notes:
 
-user_id is used for direct user permissions.
-team_id is used for future team permissions.
-permission_type may include values such as owner, view, download, or admin.
-audit_logs
+- user_id is used for direct user permissions.
+- team_id is used for future team permissions.
+- permission_type may include values such as owner, view, download, or admin.
+- audit_logs
 
 Stores important user and system activity.
 
-id
-user_id
-file_id nullable
-action
-ip_address
-details
-created_at
+- id
+- user_id
+- file_id nullable
+- action
+- ip_address
+- details
+- created_at
 
 Examples of actions:
 
-login_success
-login_failed
-file_uploaded
-file_downloaded
-file_deleted
-permission_granted
-permission_denied
-Database Design Rules
-Do not rename tables or fields without team approval.
-Do not store raw file contents in PostgreSQL.
-Do not store plain-text passwords.
-Keep file metadata and physical file storage separate.
-Prefer soft deletion for files using is_deleted.
+- login_success
+- login_failed
+- file_uploaded
+- file_downloaded
+- file_deleted
+- permission_granted
+- permission_denied
+- Database Design Rules
+- Do not rename tables or fields without team approval.
+- Do not store raw file contents in PostgreSQL.
+- Do not store plain-text passwords.
+- Keep file metadata and physical file storage separate.
+- Prefer soft deletion for files using is_deleted.

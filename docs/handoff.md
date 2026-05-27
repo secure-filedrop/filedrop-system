@@ -11,9 +11,7 @@ Repository:
 
 https://github.com/secure-filedrop/filedrop-system.git
 
-Local development path currently used:
 
-C:\Users\user\Desktop\filedrop-system
 Project Purpose
 
 Secure File Drop System is a secure upload/download portal where authenticated users can upload, download, and manage files through controlled permissions and audit logging.

@@ -5,6 +5,17 @@ This document defines the planned API endpoints for the Secure File Drop System.
 
 Endpoint names should stay stable unless the team agrees to change them.
 
+## Application Health
+
+### GET /health
+
+Purpose: report that the FastAPI application is running.
+
+- Public liveness endpoint; no authentication or database connection required.
+- Returns HTTP 200 with JSON `{"status": "ok"}`.
+- Does not check database or storage readiness and exposes no configuration details.
+- Implemented in `backend/app/main.py`.
+
 Authentication Endpoints
 POST /login
 

@@ -34,53 +34,62 @@ The system should start simple for the MVP, then expand later into teams, time/d
 [ File Storage Layer ]
   |-- Local Storage (MVP)
   |-- Amazon S3 (Future)
-Backend Responsibilities
+```
+
+## Backend Responsibilities
 
 The FastAPI backend is responsible for:
 
-Authenticating users
-Validating active sessions or tokens
-Enforcing file permissions
-Receiving uploads
-Serving downloads
-Writing file metadata to PostgreSQL
-Writing audit events
-Separating storage logic from API route logic
-Database Responsibilities
+- Authenticating users
+- Validating active sessions or tokens
+- Enforcing file permissions
+- Receiving uploads
+- Serving downloads
+- Writing file metadata to PostgreSQL
+- Writing audit events
+- Separating storage logic from API route logic
+
+## Database Responsibilities
 
 PostgreSQL stores system metadata, not the physical file contents.
 
 It stores:
 
-Users
-Teams
-Team membership
-File metadata
-File permissions
-Audit logs
-File Storage Responsibilities
+- Users
+- Teams
+- Team membership
+- File metadata
+- File permissions
+- Audit logs
+
+## File Storage Responsibilities
 
 The file storage layer stores the actual file content.
 
 For the MVP, files are stored locally in:
 
+```text
 backend/uploaded_files/
+```
 
 Future versions may use Amazon S3 while keeping the same service interface.
 
-Design Rule
+## Design Rule
 
 API routes should not directly contain all business logic.
 
 Preferred flow:
 
+```text
 Route -> Service -> Storage/Database -> Response
+```
 
 Example:
 
+```text
 routes_files.py
     calls file_service.py
         calls local_storage.py
         calls database layer
         calls audit_service.py
-
+```

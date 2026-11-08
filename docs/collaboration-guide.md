@@ -76,6 +76,21 @@ Acceptance criteria:
 Testing steps:
 
 Notes:
+
+Pre-commit Safety Check
+
+Before committing and pushing a task branch:
+
+1. Use `git branch --show-current` to confirm you are on the task branch.
+2. Inspect `git status --short` and `git diff` for unrelated changes or local files.
+3. Stage only the assigned files using explicit paths with `git add`.
+4. Review `git diff --cached --name-only` and `git diff --cached` before committing. Do not include real environment files, credentials, private keys, or uploaded content. Environment examples must contain placeholders only.
+5. Push the task branch, open a pull request linked to the issue, and request another contributor's review. Wait for approval before merging, even if your account can bypass branch protections.
+
+The root `.gitignore` excludes local uploads, environment files, private key files, dependency folders, and common generated files. Keep `backend/uploaded_files/.gitkeep` and `.env.example` templates trackable.
+
+Ignore rules do not protect files that are already tracked or added with `git add -f`. Always inspect the staged diff. If a real credential is committed, stop, notify the project lead privately, and revoke or rotate it; removing the file alone does not remove it from Git history.
+
 Pull Request Checklist
 
 Before merging, check:

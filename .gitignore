@@ -225,3 +225,20 @@ __marimo__/
 backend/.env
 backend/.env.*
 !backend/.env.example
+
+# Local uploads: keep directory placeholders, never uploaded content
+/uploaded_files/*
+!/uploaded_files/.gitkeep
+/backend/uploaded_files/*
+!/backend/uploaded_files/.gitkeep
+
+# Private key files
+*.pem
+*.key
+
+# Frontend dependencies
+node_modules/
+
+# macOS metadata
+.DS_Store
+._*

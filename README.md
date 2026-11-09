@@ -26,52 +26,57 @@ The first MVP should prove this workflow:
 
 ```text
 login -> dashboard -> upload -> database metadata -> local storage -> download -> audit log
+```
 
 Phase 1 is intentionally simple.
 
 Included in Phase 1:
 
-Basic FastAPI app
-Login page
-Dashboard page
-Local file upload
-Local file download
-PostgreSQL metadata storage
-Basic permissions foundation
-Audit log records for uploads/downloads
-Admin audit log view
+- Basic FastAPI app
+- Login page
+- Dashboard page
+- Local file upload
+- Local file download
+- PostgreSQL metadata storage
+- Basic permissions foundation
+- Audit log records for uploads/downloads
+- Admin audit log view
 
 Not included in Phase 1:
 
-Amazon S3
-Public share links
-Password-protected links
-Time/date-gated links
-Team access
-Email notifications
-Payment features
-Planned Tech Stack
-Backend: Python FastAPI
-Database: PostgreSQL
-Storage: Local storage for MVP, Amazon S3 later
-Frontend: Server-rendered templates / simple web UI for MVP
-Deployment target: Ubuntu / possible EC2 later
-Repository Documentation
+- Amazon S3
+- Public share links
+- Password-protected links
+- Time/date-gated links
+- Team access
+- Email notifications
+- Payment features
+
+## Planned Tech Stack
+
+- Backend: Python FastAPI
+- Database: PostgreSQL
+- Storage: Local storage for MVP, Amazon S3 later
+- Frontend: Server-rendered templates / simple web UI for MVP
+- Deployment target: Ubuntu / possible EC2 later
+
+## Repository Documentation
 
 Project planning and architecture documents are located in the docs/ folder.
 
 Important documents:
 
-docs/architecture.md
-docs/api-endpoints.md
-docs/database-schema.md
-docs/mvp-roadmap.md
-docs/security-notes.md
-docs/user-flow.md
-docs/ai-usage-rules.md
-docs/collaboration-guide.md
-docs/handoff.md
-Collaboration Notes
+- docs/architecture.md
+- docs/api-endpoints.md
+- docs/database-schema.md
+- docs/mvp-roadmap.md
+- docs/security-notes.md
+- docs/user-flow.md
+- docs/ai-usage-rules.md
+- docs/collaboration-guide.md
+- docs/handoff.md
+
+## Collaboration Notes
 
 This project may use AI-assisted development, but all contributors should follow the project documentation.
 
@@ -81,28 +86,29 @@ Normal development should use branches and pull requests.
 
 Example branch names:
 
-feature/auth-login
-feature/file-upload
-feature/file-download
-feature/audit-logs
-feature/dashboard-ui
-docs/update-roadmap
-fix/upload-validation
-Security Notes
+- feature/auth-login
+- feature/file-upload
+- feature/file-download
+- feature/audit-logs
+- feature/dashboard-ui
+- docs/update-roadmap
+- fix/upload-validation
+
+## Security Notes
 
 Do not commit:
 
-.env files with real secrets
-API keys
-AWS access keys
-Database passwords
-Private certificates
-Real customer files
-Uploaded files containing private information
+- .env files with real secrets
+- API keys
+- AWS access keys
+- Database passwords
+- Private certificates
+- Real customer files
+- Uploaded files containing private information
 
 Uploaded files should not be served directly from public static folders. Downloads should go through FastAPI so authentication and permission checks happen first.
 
-Current Status
+## Current Status
 
 The project is currently in baseline planning and documentation setup.
 

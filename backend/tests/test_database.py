@@ -157,9 +157,9 @@ def test_guard_accepts_explicit_disposable_target():
     assert url.database == "filedrop_test_local"
 
 
-def test_migration_matches_models_and_only_creates_users(migrated_engine):
+def test_migration_matches_models_and_documented_tables(migrated_engine):
     with migrated_engine.begin() as connection:
-        assert set(inspect(connection).get_table_names()) == {"users", "alembic_version"}
+        assert set(inspect(connection).get_table_names()) == {"users", "auth_sessions", "alembic_version"}
         assert {c["name"] for c in inspect(connection).get_columns("users")} == {
             "id", "email", "password_hash", "role", "is_active", "created_at"
         }
@@ -195,6 +195,7 @@ def test_empty_database_guard_includes_types_and_functions(migrated_engine, defi
     with migrated_engine.connect() as connection:
         transaction = connection.begin()
         try:
+            connection.exec_driver_sql("DROP TABLE auth_sessions")
             connection.exec_driver_sql("DROP TABLE users")
             connection.exec_driver_sql("DROP TABLE alembic_version")
             require_empty_database(connection)

@@ -39,6 +39,34 @@ startup. `GET /health` remains database-independent. Development/test databases
 are separate; integration tests require explicit reset consent and a guarded,
 empty disposable database. No shared-server setup is included.
 
+## Authentication sessions (Issue #12)
+
+`auth_sessions` stores server-side login sessions for the approved opaque-session
+design. It is added by revision `20261115_01`, after the `users` migration.
+
+- `id`: bigint identity primary key.
+- `user_id`: required integer foreign key to `users.id`, `ON DELETE CASCADE`.
+  Accounts are normally deactivated rather than deleted; removing a user
+  removes their sessions. Indexed (`ix_auth_sessions_user_id`) for revoking
+  all of a user's sessions.
+- `token_hash`: required `bytea`, exactly 32 bytes (SHA-256 of the session
+  token), unique (`uq_auth_sessions_token_hash`). The raw token is never stored.
+- `created_at`: required timezone-aware timestamp; server default `now()`.
+- `expires_at`: required timezone-aware timestamp, later than `created_at`. Set
+  from the database clock to `created_at` plus the fixed 30-minute lifetime;
+  never extended. Indexed (`ix_auth_sessions_expires_at`) for cleanup.
+- `revoked_at`: nullable timezone-aware timestamp, not earlier than
+  `created_at`. Set on logout or revoke-all; a revoked session never becomes
+  valid again.
+
+A session authenticates only when its token hash matches, `revoked_at` is null,
+`expires_at` is in the future, and the user is active.
+
+Retention: rows that can no longer authenticate (expired or revoked) may be
+deleted with `delete_expired_sessions()` in `app/services/auth_service.py`. Run
+it periodically as an administrator; no scheduler is included yet. Login and
+logout history belongs in audit logs, not in this table.
+
 ## Planned tables
 
 users

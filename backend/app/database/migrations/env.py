@@ -8,6 +8,7 @@ from app.core.config import ConfigurationError, get_database_url
 from app.database.base import Base
 from app.database.db import create_database_engine
 from app.models.user import User  # noqa: F401 -- registers the implemented model
+from app.models.auth_session import AuthSession  # noqa: F401
 
 config = context.config
 

@@ -4,6 +4,8 @@ uvicorn==0.54.0
 SQLAlchemy==2.0.57
 psycopg[binary]==3.3.8
 alembic==1.20.1
+pwdlib[argon2]==0.3.1
+argon2-cffi==25.1.0
 
 # Endpoint tests (FastAPI/Starlette TestClient uses httpx2)
 pytest==9.2.0

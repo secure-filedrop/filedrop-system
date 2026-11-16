@@ -1,9 +1,11 @@
 # Secure File Drop backend
 
-This foundation provides FastAPI, a public liveness endpoint, and a PostgreSQL
-connection/session layer with a migration for the `users` table. Authentication,
-dashboard pages, uploads/downloads, and audit logging remain planned in the
-[Phase 1 roadmap](../docs/mvp-roadmap.md).
+This foundation provides FastAPI, a public liveness endpoint, a PostgreSQL
+connection/session layer with migrations for `users` and `auth_sessions`, and
+the authentication foundation (Argon2id password hashing, server-side sessions,
+an authenticated-user dependency, and an initial-administrator command). Login
+and logout pages, dashboard pages, uploads/downloads, and audit logging remain
+planned in the [Phase 1 roadmap](../docs/mvp-roadmap.md).
 
 ## Local setup
 
@@ -19,7 +21,8 @@ python -m pip install -r requirements.txt
 
 The requirements include `fastapi` (web framework), `uvicorn` (local ASGI server),
 SQLAlchemy (models/sessions), Psycopg (PostgreSQL driver), Alembic (migrations),
-and `pytest` plus `httpx2` (testing). Direct dependencies are pinned to
+`pwdlib[argon2]` with `argon2-cffi` (Argon2id password hashing), and `pytest`
+plus `httpx2` (testing). Direct dependencies are pinned to
 the versions used for validation; transitive dependencies are resolved by pip.
 The current Starlette test client, re-exported by FastAPI, uses `httpx2`;
 its older `httpx` fallback is deprecated.
@@ -82,9 +85,9 @@ autogeneration; it does not replace review of constraints and expression indexes
 Downgrades remove schema/data and should be used only on disposable databases or
 as part of a separately reviewed recovery plan.
 
-Only `users` is implemented. The column contract is recorded in
-[database-schema.md](../docs/database-schema.md). No accounts are seeded and no
-login or password-hashing implementation is included.
+`users` and `auth_sessions` are implemented. Their column contracts are
+recorded in [database-schema.md](../docs/database-schema.md). No accounts are
+seeded.
 
 `create_database_engine()` is explicit and lazy. The caller owns the engine and
 disposes it when finished. `session_scope(engine)` supplies a short-lived session:
@@ -97,6 +100,45 @@ not returned as raw database errors.
 Future routes using synchronous sessions should use synchronous FastAPI handlers
 or dependencies, rather than blocking the event loop in an async handler.
 
+## Authentication foundation
+
+The approved design (Issue #12) is recorded in
+[security-notes.md](../docs/security-notes.md). This slice provides:
+
+- `app/auth/security.py`: Argon2id hashing and verification (rehash detection,
+  no truncation, 15–1024 character policy for new passwords), session-token
+  generation, and token hashing.
+- `app/services/auth_service.py`: create, look up, revoke, and revoke-all
+  session helpers, expired-session cleanup, and initial-administrator creation.
+  Session write helpers flush but do not commit, so the caller commits them
+  together with related work.
+- `app/auth/dependencies.py`: `get_current_user`, a synchronous FastAPI
+  dependency that reads the `filedrop_session` cookie. Invalid, expired,
+  revoked, or inactive-user sessions get a generic 401; configuration or
+  database failures get a generic 503. Both responses use `Cache-Control: no-store`.
+
+Login/logout routes, cookie issuing, CSRF protection, throttling, and audit
+events are a separate PR. `GET /health` stays public and database-independent.
+
+### Create the first administrator
+
+After `alembic upgrade head`, an administrator runs this from the repository
+root in an interactive terminal, with the virtual environment active and
+`DATABASE_URL` exported:
+
+```sh
+python scripts/create_initial_admin.py
+```
+
+It prompts for the email and asks for the password twice without echoing it.
+It accepts no command-line options, so the password never appears in shell
+history. If an administrator already exists, the email is taken, or the input
+fails validation, it creates nothing.
+
+To remove sessions that can no longer authenticate (expired or revoked), call
+`delete_expired_sessions(session)` followed by `session.commit()`. No scheduled
+cleanup is included yet.
+
 ## Test without PostgreSQL
 
 With the virtual environment active, from `backend/`:
@@ -107,7 +149,7 @@ env -u DATABASE_URL -u TEST_DATABASE_URL -u FILEDROP_ALLOW_TEST_DATABASE_RESET p
 
 This runs health/configuration/target-guard checks; PostgreSQL integration tests
 skip explicitly when `TEST_DATABASE_URL` is absent. No running server or database
-is required. The existing authentication and file test files remain placeholders.
+is required. Authentication unit checks run here; the file test file remains a placeholder.
 
 ## Full suite with an isolated PostgreSQL instance
 

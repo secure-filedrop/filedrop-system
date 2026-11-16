@@ -7,10 +7,10 @@ The MVP should start with the minimum needed fields, but the schema should leave
 
 ## PostgreSQL foundation: first implementation slice
 
-The first database slice implements only `users` on PostgreSQL 18 using
-synchronous SQLAlchemy/Psycopg access and explicit Alembic migrations. The other
-tables below remain planned. These implementation choices are reviewed through
-the database foundation PR linked to Issue #8.
+The first database slice implements `users` on PostgreSQL 18 using synchronous
+SQLAlchemy/Psycopg access and explicit Alembic migrations (PR #9 / Issue #8).
+The next slice adds `files` and `audit_logs` on top of that revision. Teams,
+team membership, and file-sharing permission tables remain planned.
 
 The `users` contract is:
 
@@ -39,7 +39,56 @@ startup. `GET /health` remains database-independent. Development/test databases
 are separate; integration tests require explicit reset consent and a guarded,
 empty disposable database. No shared-server setup is included.
 
-## Planned tables
+## File metadata and audit-log contract
+
+The file/audit revision depends on `20261108_01`. It preserves user rows and adds
+only metadata; actual files, upload/download handlers, and audit-writing services
+are separate tasks.
+
+`files` uses the documented fields:
+
+- `id`: integer identity primary key.
+- `owner_user_id`: required integer foreign key to `users.id`.
+- `original_filename`: required, nonempty text for display; it is untrusted
+  metadata, not a server path.
+- `stored_filename`: required, nonempty, unique string of at most 255 characters,
+  matching the planned unique on-disk name. Original display names may repeat.
+- `storage_key`: required, nonempty text; unique together with `storage_type`.
+- `storage_type`: required string, server default `local`; only `local` is
+  accepted in Phase 1. A future S3 migration can extend this constraint.
+- `file_size`: required nonnegative bigint, including zero for an empty file.
+- `content_type`: required, nonempty string of at most 255 characters; server
+  default `application/octet-stream`. This is metadata, not file-type validation.
+- `expires_at`: nullable timezone-aware timestamp, stored for later enforcement.
+- `is_deleted`: required boolean, server default `false` for soft deletion.
+- `created_at`: required timezone-aware timestamp, server default `now()`.
+
+`audit_logs` uses the documented fields:
+
+- `id`: integer identity primary key.
+- `user_id`: nullable integer foreign key to `users.id`, so failed logins for
+  unknown users can be recorded without a fabricated account.
+- `file_id`: nullable integer foreign key to `files.id`, so login/system events
+  do not require a file.
+- `action`: required, nonempty string of at most 64 characters with no leading
+  or trailing spaces. The examples below are not a closed database enum.
+- `ip_address`: nullable PostgreSQL INET value supporting IPv4 and IPv6; system
+  events may have no address.
+- `details`: required JSONB object, server default `{}`. Callers must exclude
+  passwords, tokens, connection URLs, and other secrets; the schema does not
+  automatically redact arbitrary JSON.
+- `created_at`: required timezone-aware timestamp, server default `now()`.
+
+All non-null user/file references must exist. Foreign keys use `ON DELETE
+RESTRICT` to preserve ownership and audit references; deactivation and file soft
+deletion remain available. Audit rows are not deleted automatically. Indexes
+cover file owners and audit user/file references. No real data is seeded.
+
+These constraints do not implement permission checks, expiration enforcement,
+safe storage-path construction, or an append-only audit service. Those remain
+explicit responsibilities of later service/API tasks.
+
+## Table inventory
 
 users
 

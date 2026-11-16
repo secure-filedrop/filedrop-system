@@ -1,7 +1,7 @@
 # Secure File Drop backend
 
 This foundation provides FastAPI, a public liveness endpoint, and a PostgreSQL
-connection/session layer with a migration for the `users` table. Authentication,
+connection/session layer with migrations for `users`, `files`, and `audit_logs`. Authentication,
 dashboard pages, uploads/downloads, and audit logging remain planned in the
 [Phase 1 roadmap](../docs/mvp-roadmap.md).
 
@@ -82,9 +82,19 @@ autogeneration; it does not replace review of constraints and expression indexes
 Downgrades remove schema/data and should be used only on disposable databases or
 as part of a separately reviewed recovery plan.
 
-Only `users` is implemented. The column contract is recorded in
-[database-schema.md](../docs/database-schema.md). No accounts are seeded and no
-login or password-hashing implementation is included.
+The implemented tables are `users`, `files`, and `audit_logs`. The column and
+foreign-key contracts are recorded in [database-schema.md](../docs/database-schema.md).
+The second migration preserves existing users, adds only file metadata and audit
+records, and can be downgraded independently to the user-only revision.
+
+Audit user/file IDs may be null for events such as unknown-user login failures.
+Non-null IDs must reference existing rows. Soft deletion/deactivation preserves
+audit references; hard deletion of referenced users/files is restricted. Details
+are JSON objects and optional addresses use PostgreSQL INET. Services must exclude
+secrets from audit details; the schema is not a redaction or append-only mechanism.
+
+No accounts, uploaded files, or actual audit events are seeded. Login, upload and
+download handlers, permission checks, and password hashing are still separate tasks.
 
 `create_database_engine()` is explicit and lazy. The caller owns the engine and
 disposes it when finished. `session_scope(engine)` supplies a short-lived session:

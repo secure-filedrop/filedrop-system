@@ -8,12 +8,14 @@ import sys
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import delete, inspect, select, text
+from sqlalchemy import JSON, delete, inspect, null, select, text
 from sqlalchemy.exc import InvalidRequestError
 
 from app.core.config import ConfigurationError, get_database_url, parse_database_url
 from app.database.db import DatabaseOperationError, create_database_engine, session_scope
 from app.models.user import User
+from app.models.file import File
+from app.models.audit_log import AuditLog
 
 BACKEND = Path(__file__).resolve().parents[1]
 
@@ -99,6 +101,8 @@ def database(migrated_engine):
         yield migrated_engine
     finally:
         with migrated_engine.begin() as connection:
+            connection.execute(delete(AuditLog))
+            connection.execute(delete(File))
             connection.execute(delete(User))
 
 
@@ -157,11 +161,18 @@ def test_guard_accepts_explicit_disposable_target():
     assert url.database == "filedrop_test_local"
 
 
-def test_migration_matches_models_and_only_creates_users(migrated_engine):
+def test_migration_matches_models_and_documented_tables(migrated_engine):
     with migrated_engine.begin() as connection:
-        assert set(inspect(connection).get_table_names()) == {"users", "alembic_version"}
+        assert set(inspect(connection).get_table_names()) == {"users", "files", "audit_logs", "alembic_version"}
         assert {c["name"] for c in inspect(connection).get_columns("users")} == {
             "id", "email", "password_hash", "role", "is_active", "created_at"
+        }
+        assert {c["name"] for c in inspect(connection).get_columns("files")} == {
+            "id", "owner_user_id", "original_filename", "stored_filename", "storage_key",
+            "storage_type", "file_size", "content_type", "expires_at", "is_deleted", "created_at",
+        }
+        assert {c["name"] for c in inspect(connection).get_columns("audit_logs")} == {
+            "id", "user_id", "file_id", "action", "ip_address", "details", "created_at",
         }
         command.check(alembic_config(connection))
         with pytest.raises(RuntimeError, match="must be empty"):
@@ -195,8 +206,8 @@ def test_empty_database_guard_includes_types_and_functions(migrated_engine, defi
     with migrated_engine.connect() as connection:
         transaction = connection.begin()
         try:
-            connection.exec_driver_sql("DROP TABLE users")
-            connection.exec_driver_sql("DROP TABLE alembic_version")
+            for table in ("audit_logs", "files", "users", "alembic_version"):
+                connection.exec_driver_sql(f"DROP TABLE {table}")
             require_empty_database(connection)
             connection.exec_driver_sql(definition)
             with pytest.raises(RuntimeError, match="must be empty"):
@@ -265,3 +276,183 @@ def test_uncommitted_work_is_rolled_back(database, raise_error):
     with session_scope(database) as session:
         assert session.scalar(select(User)) is None
     assert database.pool.checkedout() == 0
+
+
+def create_owner(engine):
+    with session_scope(engine) as session:
+        user = User(email="owner@example.test", password_hash="synthetic-test-hash")
+        session.add(user)
+        session.commit()
+        return user.id
+
+
+def file_record(owner_id, **changes):
+    values = dict(
+        owner_user_id=owner_id, original_filename="example.txt",
+        stored_filename="stored-example.txt", storage_key="stored-example.txt", file_size=0,
+    )
+    values.update(changes)
+    return File(**values)
+
+
+def test_file_defaults_and_metadata_round_trip(database):
+    owner_id = create_owner(database)
+    with session_scope(database) as session:
+        item = file_record(owner_id)
+        session.add(item)
+        session.commit()
+        assert item.id > 0
+        assert item.storage_type == "local"
+        assert item.content_type == "application/octet-stream"
+        assert item.file_size == 0
+        assert item.is_deleted is False
+        assert item.expires_at is None
+        assert item.created_at.utcoffset() is not None
+    with session_scope(database) as session:
+        saved = session.scalar(select(File))
+        assert saved.owner_user_id == owner_id
+        assert saved.original_filename == "example.txt"
+
+
+@pytest.mark.parametrize("changes", [
+    {"original_filename": ""}, {"stored_filename": ""}, {"storage_key": ""},
+    {"file_size": -1}, {"file_size": None}, {"storage_type": "s3"},
+    {"content_type": ""}, {"stored_filename": "x" * 256}, {"owner_user_id": None},
+])
+def test_file_constraints(database, changes):
+    owner_id = create_owner(database)
+    with pytest.raises(DatabaseOperationError):
+        with session_scope(database) as session:
+            session.add(file_record(owner_id, **changes))
+            session.commit()
+    with session_scope(database) as session:
+        assert session.scalar(select(File)) is None
+
+
+def test_storage_location_must_be_unique(database):
+    owner_id = create_owner(database)
+    with session_scope(database) as session:
+        session.add(file_record(owner_id))
+        session.commit()
+    with pytest.raises(DatabaseOperationError) as error:
+        with session_scope(database) as session:
+            session.add(file_record(owner_id, original_filename="another.txt", stored_filename="another-stored.txt"))
+            session.commit()
+    assert error.value.sqlstate == "23505"
+
+
+def test_stored_filename_must_be_unique(database):
+    owner_id = create_owner(database)
+    with session_scope(database) as session:
+        session.add(file_record(owner_id))
+        session.commit()
+    with pytest.raises(DatabaseOperationError) as error:
+        with session_scope(database) as session:
+            session.add(file_record(owner_id, storage_key="another-key"))
+            session.commit()
+    assert error.value.sqlstate == "23505"
+
+
+def test_original_display_names_may_repeat(database):
+    owner_id = create_owner(database)
+    with session_scope(database) as session:
+        session.add_all([
+            file_record(owner_id),
+            file_record(owner_id, stored_filename="another-stored.txt", storage_key="another-key"),
+        ])
+        session.commit()
+    with session_scope(database) as session:
+        assert session.scalars(select(File.original_filename)).all() == ["example.txt", "example.txt"]
+
+
+@pytest.mark.parametrize("model, values", [
+    (File, dict(owner_user_id=2147483647, original_filename="a", stored_filename="a", storage_key="a", file_size=1)),
+    (AuditLog, dict(action="login_success", user_id=2147483647)),
+    (AuditLog, dict(action="file_downloaded", file_id=2147483647)),
+])
+def test_non_null_foreign_keys_must_exist(database, model, values):
+    with pytest.raises(DatabaseOperationError) as error:
+        with session_scope(database) as session:
+            session.add(model(**values))
+            session.commit()
+    assert error.value.sqlstate == "23503"
+
+
+def test_audit_allows_unknown_actor_and_missing_file(database):
+    with session_scope(database) as session:
+        event = AuditLog(action="login_failed")
+        session.add(event)
+        session.commit()
+        assert event.user_id is None
+        assert event.file_id is None
+        assert event.ip_address is None
+        assert event.details == {}
+        assert event.created_at.utcoffset() is not None
+
+
+@pytest.mark.parametrize("address", ["198.51.100.10", "2001:db8::1"])
+def test_audit_ip_and_structured_details_round_trip(database, address):
+    details = {"reason": "unknown_user", "attempt": 1, "flags": ["example"], "accepted": False}
+    with session_scope(database) as session:
+        event = AuditLog(action="login_failed", ip_address=address, details=details)
+        session.add(event)
+        session.commit()
+        event_id = event.id
+    with session_scope(database) as session:
+        event = session.get(AuditLog, event_id)
+        assert str(event.ip_address) == address
+        assert event.details == details
+
+
+@pytest.mark.parametrize("changes", [
+    {"action": ""}, {"action": " spaced"}, {"action": "x" * 65},
+    {"ip_address": "not-an-address"}, {"details": []}, {"details": "text"},
+    {"details": None}, {"details": JSON.NULL}, {"details": null()},
+])
+def test_audit_constraints(database, changes):
+    values = {"action": "login_failed"}
+    values.update(changes)
+    with pytest.raises(DatabaseOperationError):
+        with session_scope(database) as session:
+            session.add(AuditLog(**values))
+            session.commit()
+
+
+def test_soft_delete_retains_audit_and_hard_delete_is_restricted(database):
+    owner_id = create_owner(database)
+    with session_scope(database) as session:
+        item = file_record(owner_id)
+        session.add(item)
+        session.flush()
+        event = AuditLog(user_id=owner_id, file_id=item.id, action="file_uploaded")
+        session.add(event)
+        session.commit()
+        item_id, event_id = item.id, event.id
+        item.is_deleted = True
+        session.get(User, owner_id).is_active = False
+        session.commit()
+    with session_scope(database) as session:
+        event = session.get(AuditLog, event_id)
+        assert event.user_id == owner_id and event.file_id == item_id
+        assert session.get(File, item_id).is_deleted is True
+    for model, record_id in ((File, item_id), (User, owner_id)):
+        with pytest.raises(DatabaseOperationError) as error:
+            with session_scope(database) as session:
+                session.delete(session.get(model, record_id))
+                session.commit()
+        assert error.value.sqlstate == "23001"  # PostgreSQL restrict_violation on hard delete.
+
+
+def test_file_audit_migration_preserves_existing_user_rows(database):
+    with database.begin() as connection:
+        command.downgrade(alembic_config(connection), "20261108_01")
+        assert set(inspect(connection).get_table_names()) == {"users", "alembic_version"}
+        owner_id = connection.scalar(
+            User.__table__.insert().values(email="retained@example.test", password_hash="synthetic-test-hash").returning(User.id)
+        )
+        command.upgrade(alembic_config(connection), "head")
+        assert connection.scalar(select(User.email).where(User.id == owner_id)) == "retained@example.test"
+        command.check(alembic_config(connection))
+        command.downgrade(alembic_config(connection), "20261108_01")
+        assert connection.scalar(select(User.email).where(User.id == owner_id)) == "retained@example.test"
+        command.upgrade(alembic_config(connection), "head")
